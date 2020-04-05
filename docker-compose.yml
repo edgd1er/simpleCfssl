@@ -1,0 +1,41 @@
+version: '3.5'
+services:
+  ca:
+    image: edgd1er/simple_cfssl
+    build:
+      context: build
+      dockerfile: Dockerfile
+    restart: always
+    expose:
+      - "8888/tcp"
+    ports:
+      - "10888:8888/tcp"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./DATA:/DATA
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
+      traefik.enable: "false"
+      traefik.http.routers.plex.rule: "Host(`ca.mission.lan`)"
+      traefik.http.routers.plex.entrypoints: "https"
+      traefik.http.routers.plex.tls: "true"
+      # Redirect to https
+      #traefik.http.middlewares.https.redirectscheme.scheme: "https"
+      #traefik.http.middlewares.https.redirectscheme.permanent: "true"
+      #traefik.http.routers.plex.middlewares: "https"
+    environment:
+      TZ: Europe/Paris
+      CA_CN_name: "CA_name"
+      CA_KEY_ALGO: "rsa"
+      CA_KEY_SIZE: 2048
+      CA_Country: "FR"
+      CA_Location: "Paris"
+      CA_Organisation: "CA Org"
+      CA_State: "N/A"
+    networks:
+     - traefik_net
+
+networks:
+  traefik_net:
+    external: true
+

@@ -1,0 +1,13 @@
+root = true
+
+[*]
+# charset = utf-8
+# end_of_line = lf
+# indent_size = 2
+# indent_style = space
+# insert_final_newline = false
+# max_line_length = 120
+# tab_width = 2
+
+[{composer.lock,.eslintrc,bowerrc,.prettierrc,.babelrc,jest.config,.stylelintrc,*.jsb3,*.jsb2,*.json}]
+# tab_width = 4
