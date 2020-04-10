@@ -5,11 +5,15 @@ services:
     build:
       context: build
       dockerfile: Dockerfile
-    restart: always
+      args:
+        #- aptcacher=192.168.53.211
+        - aptcacher=192.168.1.22
+    restart: on-failure
     expose:
       - "8888/tcp"
     ports:
       - "10888:8888/tcp"
+      - "10889:8889/tcp"
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ./DATA:/DATA
