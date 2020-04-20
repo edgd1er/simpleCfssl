@@ -17,8 +17,10 @@ RUN if [ ! -z ${aptcacher} ]; then echo "Acquire::http::Proxy \"http://${aptcach
   dpkg-reconfigure -f noninteractive tzdata ; apt clean
 ADD generate_CAcerts.sh /root/generate_CAcerts.sh
 ADD ca_serve.conf /etc/supervisor/conf.d/ca_serve.conf
+ADD ocsp_schema.sql /root/
 ADD supervisord.conf /etc/supervisor/supervisord.conf
 ADD start.sh /root/start.sh
+HEALTHCHECK CMD --interval=5s curl --fail -d '{"label": "primary"}' http://localhost:${CAI_PORT}/api/v1/cfssl/info
 RUN mkdir -p /DATA/ && chmod +x /root/generate_CAcerts.sh /root/start.sh
 #RUN go get bitbucket.org/liamstask/goose/cmd/goose
 
