@@ -5,12 +5,19 @@ services:
     build:
       context: build
       dockerfile: Dockerfile
+      args:
+        - aptcacher=192.168.53.208
     restart: on-failure
     expose:
       - "8888/tcp"
+      - "8889/tcp"
+      - "8890/tcp"
+      - "8891/tcp"
     ports:
       - "10888:8888/tcp"
       - "10889:8889/tcp"
+      - "10890:8890/tcp"
+      - "10891:8891/tcp"
     volumes:
       - ./DATA:/DATA
     environment:
@@ -25,8 +32,6 @@ services:
       CAI1_Name: "production"
       CAI2_Name: "development"
       #need step 2: 1 for CA service / 1 for OCSP service
-      CAI1_PORT: 8888
-      CAI2_PORT: 8890
     labels:
       com.centurylinklabs.watchtower.enable: "false"
       traefik.enable: "false"
