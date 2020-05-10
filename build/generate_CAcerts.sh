@@ -53,25 +53,14 @@ EOF
   cd /DATA/ca/
   cfssl gencert -initca=true /DATA/ca/ca-root-csr.json | cfssljson -bare ca-root
 }
-#
-# Generate CA certs according to
-# $1: PKI port
-# $2: CA Name
-# $3: CA profile: 2nd-full 2nd-noserver
-generateIntermediateCAcerts() {
-  [[ $# -ne 3 ]] && info "Error, 3 parameters needed, CA http port, ca profile () "
-  pki_port=$1
-  ocsp_port=$(($1 + 1))
-  CA_Name=$2
-  myprofile=$3
-  # write intermediate CA profiles in json
-  cat <<EOF >/DATA/intermediate/ca-2nd-config.json
+
+# write intermediate CA profiles in json
+generate2ndCAConfJson() {
+  [[ ! -f /DATA/intermediate/ca-2nd-config.json ]] || [[ "$FORCE_CREATION" == "true" ]] && cat <<EOF >/DATA/intermediate/ca-2nd-config.json
 {
     "signing": {
         "default": {
             "expiry": "43800h",
-            "ocsp_url": "http://localhost:${ocsp_port}",
-            "crl_url": "http://localhost:${pki_port}/crl",
             "usages": [
                 "signing",
                 "key encipherment",
@@ -90,6 +79,8 @@ generateIntermediateCAcerts() {
                     "crl sign",
                     "server auth"
                 ],
+                "ocsp_url": "http://0.0.0.0:$((${CAI1_PORT} + 1))",
+                "crl_url": "http://0.0.0.0:${CAI1_PORT}/crl",
                 "expiry": "8760h",
                 "ca_constraint": {
                     "is_ca": true,
@@ -102,6 +93,8 @@ generateIntermediateCAcerts() {
                     "cert sign",
                     "crl sign"
                 ],
+                "ocsp_url": "http://0.0.0.0:$((${CAI2_PORT} + 1))",
+                "crl_url": "http://0.0.0.0:${CAI2_PORT}/crl",
                 "expiry": "8760h",
                 "ca_constraint": {
                     "is_ca": true,
@@ -113,6 +106,19 @@ generateIntermediateCAcerts() {
     }
 }
 EOF
+}
+
+#
+# Generate CA certs according to
+# $1: PKI port
+# $2: CA Name
+# $3: CA profile: 2nd-full 2nd-noserver
+generateIntermediateCAcerts() {
+  [[ $# -ne 3 ]] && info "Error, 3 parameters needed, CA http port, ca profile () "
+  pki_port=$1
+  ocsp_port=$(($1 + 1))
+  CA_Name=$2
+  myprofile=$3
   cd /DATA/intermediate/
   #write CA certificate request in json
   cat <<EOF >/DATA/intermediate/${CA_Name}/ca-${CA_Name}-${myprofile}-csr.json
@@ -192,7 +198,9 @@ generateDbConfig() {
 
 [[ -n $TZ ]] && ln -sf /usr/share/zoneinfo/$TZ /etc/localetime && dpkg-reconfigure tzdata
 
-for di in /DATA/ca /DATA/certs /DATA/intermediate/${CAI1_NAME} /DATA/intermediate/${CAI1_NAME}; do
+[[ "$FORCE_CREATION" == "true" ]] && find /DATA -type f -exec rm {} \;
+
+for di in /DATA/ca /DATA/certs /DATA/intermediate/${CAI1_NAME} /DATA/intermediate/${CAI2_NAME}; do
   [[ ! -d ${di} ]] && mkdir -p ${di}
 done
 
@@ -200,6 +208,8 @@ echo -e "\n"
 if [[ ! -f /DATA/ca-root-key.pem ]]; then
   info "** generation root CA certs **"
   generateCAcerts
+  info write intermediate CA profiles in json
+  generate2ndCAConfJson
   info "** generation secondary CA certs **"
   NAME=${CAI1_NAME}
   TYPE=2nd-full
