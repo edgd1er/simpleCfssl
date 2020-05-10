@@ -6,3 +6,6 @@
 **/*.crt
 **/*.json
 **/*.db
+
+**/ocspdump.txt
+/DATA/requestCerts.sh
