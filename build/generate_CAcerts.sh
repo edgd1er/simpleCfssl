@@ -15,10 +15,12 @@ set -e
 
 CAI1_PORT=8888
 CAI2_PORT=8890
+CAI1_NAME=${CAI1_NAME:-production}
+CAI2_NAME=${CAI2_NAME:-development}
 
 #functions
 info() {
-  echo "[$(date -u '+%Y/%m/%d %H:%M:%S GMT')] $*"
+  echo "$(date '+%Y/%m/%d %H:%M:%S %Z')[INFO] $*"
 }
 
 #/DATA
@@ -58,18 +60,18 @@ EOF
 # $3: CA profile: 2nd-full 2nd-noserver
 generateIntermediateCAcerts() {
   [[ $# -ne 3 ]] && info "Error, 3 parameters needed, CA http port, ca profile () "
-  PKI_PORT=$1
-  OCSP_PORT=$(($1 + 1))
+  pki_port=$1
+  ocsp_port=$(($1 + 1))
   CA_Name=$2
-  MYPROFILE=$3
+  myprofile=$3
   # write intermediate CA profiles in json
   cat <<EOF >/DATA/intermediate/ca-2nd-config.json
 {
     "signing": {
         "default": {
             "expiry": "43800h",
-            "ocsp_url": "http://localhost:${OCSP_PORT}",
-            "crl_url": "http://localhost:${PKI_PORT}/crl",
+            "ocsp_url": "http://localhost:${ocsp_port}",
+            "crl_url": "http://localhost:${pki_port}/crl",
             "usages": [
                 "signing",
                 "key encipherment",
@@ -112,9 +114,8 @@ generateIntermediateCAcerts() {
 }
 EOF
   cd /DATA/intermediate/
-  #  for MYPROFILE in ${CAI1_Name} ${CAI2_Name}; do
   #write CA certificate request in json
-  cat <<EOF >/DATA/intermediate/${CA_Name}/ca-${CA_Name}-${MYPROFILE}-csr.json
+  cat <<EOF >/DATA/intermediate/${CA_Name}/ca-${CA_Name}-${myprofile}-csr.json
 {
   "CN": "${CA_Name} CA",
   "key": {
@@ -162,22 +163,22 @@ EOF
   cd "/DATA/intermediate/${CA_Name}"
   # generate CA certificate
   info generate CA certificate ${CA_Name}
-  cfssl gencert -initca=true "/DATA/intermediate/${CA_Name}/ca-${CA_Name}-${MYPROFILE}-csr.json" | cfssljson -bare "ca-${CA_Name}-${MYPROFILE}"
+  cfssl gencert -initca=true "/DATA/intermediate/${CA_Name}/ca-${CA_Name}-${myprofile}-csr.json" | cfssljson -bare "ca-${CA_Name}-${myprofile}"
   # sign intermediate CA with root CA
   info sign intermediate CA ${CA_Name} with root CA
   cfssl sign -ca=/DATA/ca/ca-root.pem -ca-key=/DATA/ca/ca-root-key.pem --config="/DATA/intermediate/ca-2nd-config.json" \
-    -profile ${MYPROFILE} "/DATA/intermediate/${CA_Name}/ca-${CA_Name}-${MYPROFILE}.csr" | cfssljson -bare "ca-${CA_Name}-${MYPROFILE}"
+    -profile ${myprofile} "/DATA/intermediate/${CA_Name}/ca-${CA_Name}-${myprofile}.csr" | cfssljson -bare "ca-${CA_Name}-${myprofile}"
   #generate ocsp
   info generate ocsp certificate for ${CA_Name}
-  cfssl gencert -ca="/DATA/intermediate/${CA_Name}/ca-${CA_Name}-${MYPROFILE}.pem" \
-    -ca-key="/DATA/intermediate/${CA_Name}/ca-${CA_Name}-${MYPROFILE}-key.pem" -config="/DATA/intermediate/ca-2nd-config.json" \
+  cfssl gencert -ca="/DATA/intermediate/${CA_Name}/ca-${CA_Name}-${myprofile}.pem" \
+    -ca-key="/DATA/intermediate/${CA_Name}/ca-${CA_Name}-${myprofile}-key.pem" -config="/DATA/intermediate/ca-2nd-config.json" \
     -profile="ocsp" "/DATA/intermediate/${CA_Name}/${CA_Name}-ocsp-csr.json" | cfssljson -bare ${CA_Name}-ocsp
   #  done
 }
 
 generateDbConfig() {
 
-  for CAI in ${CAI1_Name} ${CAI2_Name}; do
+  for CAI in ${CAI1_NAME} ${CAI2_NAME}; do
     echo "{\"driver\":\"sqlite3\",\"data_source\":\"/DATA/intermediate/${CAI}/certs-${CAI}.db\"}" >/DATA/intermediate/${CAI}/certdb-${CAI}.json
     if [[ ! -f /DATA/intermediate/${CAI}/certs-${CAI}.db ]]; then
       cat /root/ocsp_schema.sql | sqlite3 /DATA/intermediate/${CAI}/certs-${CAI}.db
@@ -189,7 +190,9 @@ generateDbConfig() {
 #  main  #
 ##########
 
-for di in /DATA/ca /DATA/certs /DATA/intermediate/${CAI1_Name} /DATA/intermediate/${CAI2_Name}; do
+[[ -n $TZ ]] && ln -sf /usr/share/zoneinfo/$TZ /etc/localetime && dpkg-reconfigure tzdata
+
+for di in /DATA/ca /DATA/certs /DATA/intermediate/${CAI1_NAME} /DATA/intermediate/${CAI1_NAME}; do
   [[ ! -d ${di} ]] && mkdir -p ${di}
 done
 
@@ -198,15 +201,20 @@ if [[ ! -f /DATA/ca-root-key.pem ]]; then
   info "** generation root CA certs **"
   generateCAcerts
   info "** generation secondary CA certs **"
-  NAME=production
+  NAME=${CAI1_NAME}
   TYPE=2nd-full
   PORT=${CAI1_PORT}
   generateIntermediateCAcerts ${PORT} ${NAME} ${TYPE} || info "using existing CA intermediate certificate for $NAME"
 
-  NAME=development
+  NAME=${CAI2_NAME}
   TYPE=2nd-noserver
   PORT=${CAI2_PORT}
   generateIntermediateCAcerts ${PORT} ${NAME} ${TYPE} || info "using existing CA intermediate certificates for $NAME"
+
+  info prepare sqlite database
+  #prepare database
+  generateDbConfig
+
 else
   info "using existing root and intermediate CA certificates"
 fi
@@ -214,16 +222,13 @@ fi
 info ca root text
 openssl x509 -in /DATA/ca/ca-root.pem -text -noout
 
-cfssl print-defaults config >/DATA/ca/ca-config-defaults.json
-cfssl print-defaults csr >/DATA/ca/ca-csr-defaults.json
+#cfssl print-defaults config >/DATA/ca/ca-config-defaults.json
+#cfssl print-defaults csr >/DATA/ca/ca-csr-defaults.json
 
-info prepare sqlite database
-#prepare database
-generateDbConfig
-
-info Pre-generate the OCSP response:
-for CAI in ${CAI1_NAME} ${CAI1_NAME}; do
-  cfssl ocspdump -db-config /DATA/intermediate/${CAI}/certdb-${NAME}.json >/DATA/intermediate/${CAI}/ocspdump.txt
+info "Pre-generate the OCSP response:"
+for CAI in ${CAI1_NAME} ${CAI2_NAME}; do
+  info "generating OCSP response: /DATA/intermediate/${CAI}/ocspdump.txt"
+  cfssl ocspdump -db-config /DATA/intermediate/${CAI}/certdb-${CAI}.json >/DATA/intermediate/${CAI}/ocspdump.txt
   [[ ! -f /DATA/intermediate/${CAI}/ocspdump.txt ]] && touch /DATA/intermediate/${CAI}/ocspdump.txt && info creating void dump for ${CAI}
 done
 
@@ -238,8 +243,5 @@ info start CA1 + ocsp responder
 supervisorctl start cfssl_ocspresponder_CAI1
 supervisorctl start cfssl_serve_CAI1
 info start CA2 + + ocsp responder
-#supervisorctl start cfssl_ocspresponder_CAI2
+supervisorctl start cfssl_ocspresponder_CAI2
 supervisorctl start cfssl_serve_CAI2
-
-#How to test our OCSP responder ?
-#openssl ocsp -issuer bundle.pem -no_nonce -cert my-client.pem -CAfile ca-server.pem -text -url http://localhost:8889
