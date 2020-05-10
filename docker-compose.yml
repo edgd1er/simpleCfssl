@@ -6,7 +6,7 @@ services:
       context: build
       dockerfile: Dockerfile
       args:
-        - aptcacher=192.168.53.211
+        - aptcacher=192.168.53.208
     restart: on-failure
     expose:
       - "8888/tcp"
@@ -22,6 +22,7 @@ services:
       - ./DATA:/DATA
     environment:
       TZ: Europe/Paris
+      FORCE_CREATION: "true"
       CA_CN_name: "CA_name"
       CA_KEY_ALGO: "rsa"
       CA_KEY_SIZE: 2048
