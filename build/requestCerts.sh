@@ -2,7 +2,7 @@
 set -e
 
 #variables
-CERTDIR=$([[ ! -f /.dockerenv ]] && echo "../") || echo ""
+CERTDIR=$([[ ! -f /.dockerenv ]] && echo "..") || echo ""
 CERTDIR+=/DATA/certs
 DATE=$(date +%s)
 DEBUG=${DEBUG:-""}
@@ -155,27 +155,30 @@ result=$(curl -s -X POST -H "Content-Type: application/json" -d "{ \"profile\":\
 saveKeyCert "$result"
 ocsp=$(openssl x509 -noout -ocsp_uri -in ${CERTDIR}/$name.$type.crt)
 echo "ocsp uri: $ocsp"
+
+
+echo -e "\nCRL: $(openssl x509 -in ${CERTDIR}/$name.$type.crt -noout -text | grep crl)"
+
 openssl x509 -in ${CERTDIR}/$name.$type.crt -text -noout
 
-set -x
+#openssl x509 -noout -text -in intermediate/production/ca-production-2nd-full.pem | grep -A3 "CRL Distr"
+#openssl x509 -noout -ocsp_uri -in intermediate/production/ca-production-2nd-full.pem
+
+echo "check intermediate CA with root CA: "
+openssl verify -CAfile ${CERTDIR}/../ca/ca-root.pem ${CERTDIR}/../intermediate/production/ca-production-2nd-full.pem
+echo "check chain certificate : "
+openssl verify -CAfile ${CERTDIR}/../ca/ca-root.pem -untrusted ${CERTDIR}/../intermediate/production/ca-production-2nd-full.pem ${CERTDIR}/$name.$type.crt
+
+openssl ocsp -issuer ${CERTDIR}/../intermediate/production/ca-production-2nd-full.pem -no_nonce -cert ${CERTDIR}/$name.$type.crt -CAfile ${CERTDIR}/../ca/ca-root.pem -text -url ${CAOCSP}
 exit
-
-./requestCerts.sh -dc production -n holdom2.mission.lan -t server -o pihole.mission.lan -o icinga.mission.lan -o jeedom.mission.lan -o cockpithol.mission.lan -o cadvisor.mission.lan -o portainer.mission.lan
-
-openssl x509 -noout -text -in intermediate/production/ca-production-2nd-full.pem | grep -A3 "CRL Distr"
-openssl x509 -noout -ocsp_uri -in intermediate/production/ca-production-2nd-full.pem
-
-openssl x509 -noout -ocsp_uri -in certs/holdom2.mission.lan.server.crt
 
 name=holdom2.mission.lan
 type=server
-openssl x509 -in ${CERTDIR}/$name.$type.crt -noout -text
-echo -e "\nCRL: $(openssl x509 -in ${CERTDIR}/$name.$type.crt -noout -text | grep crl)"
+CERTDIR=./certs
+#openssl x509 -in ${CERTDIR}/$name.$type.crt -noout -text
 
-openssl verify -CAfile ${CERTDIR}/../ca/ca-root.pem ${CERTDIR}/../intermediate/production/ca-production-2nd-full.pem
-openssl verify -CAfile ${CERTDIR}/../intermediate/production/ca-production-2nd-full.pem ${CERTDIR}/$name.$type.crt
 
-openssl ocsp -issuer ${CERTDIR}/../intermediate/production/ca-production-2nd-full.pem -no_nonce -cert ${CERTDIR}/$name.$type.crt -CAfile ${CERTDIR}/../ca/ca-root.pem -text -url http://localhost:8889
+./requestCerts.sh -dc production -n holdom2.mission.lan -t server -o pihole.mission.lan -o icinga.mission.lan -o jeedom.mission.lan -o cockpithol.mission.lan -o cadvisor.mission.lan -o portainer.mission.lan
 
 #How to test our OCSP responder ?
 openssl ocsp -issuer bundle.pem -no_nonce -cert my-client.pem -CAfile ca-server.pem -text -url http://localhost:8889
