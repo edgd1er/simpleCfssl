@@ -16,6 +16,7 @@ ENV CAI2_PORT=8890
 ENV CAI2_OCSP_PORT=8891
 ENV OCSP_LOGLEVEL=0
 ENV FORCE_CREATION=false
+ENV LOG_LEVEL=5
 
 RUN if [ ! -z ${aptcacher} ]; then echo "Acquire::http::Proxy \"http://${aptcacher}:3142\";" >/etc/apt/apt.conf.d/01proxy && \
   echo "Acquire::https::Proxy \"http://${aptcacher}:3142\";" >>/etc/apt/apt.conf.d/01proxy && cat /etc/apt/apt.conf.d/01proxy ; fi;\
