@@ -32,6 +32,9 @@ services:
       CA_State: "N/A"
       CAI1_NAME: "production"
       CAI2_NAME: "development"
+      XPSD_CAI1_PORT: 10888
+      XPSD_CAI2_PORT: 10890
+      LOG_LEVEL: 0
       #need step 2: 1 for CA service / 1 for OCSP service
     labels:
       com.centurylinklabs.watchtower.enable: "false"
