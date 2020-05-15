@@ -4,6 +4,8 @@ set -e
 # api doc: https://github.com/cloudflare/cfssl/tree/master/doc/api
 # cfssl sign [-ca cert] [-ca-key key] [-hostname comma,separated,hostnames] csr [subject]
 
+#https://superuser.com/questions/738612/openssl-ca-keyusage-extension
+
 #set defaults
 [[ -z ${CA_CN_name} ]] && CA_CN_name="exampleCA"
 [[ -z ${CA_KEY_ALGO} ]] && CA_KEY_ALGO="rsa"
@@ -15,8 +17,11 @@ set -e
 
 CAI1_PORT=8888
 CAI2_PORT=8890
+XPSD_CAI1_PORT=${XPSD_CAI1_PORT:-8888}
+XPSD_CAI2_PORT=${XPSD_CAI2_PORT:-8890}
 CAI1_NAME=${CAI1_NAME:-production}
 CAI2_NAME=${CAI2_NAME:-development}
+XPSD_HOST=${XPSD_HOST:-"0.0.0.0"}
 
 #functions
 info() {
@@ -69,7 +74,7 @@ generate2ndCAConfJson() {
         },
         "profiles": {
            "ocsp": {
-                    "usages": ["digital signature", "ocsp signing"],
+                    "usages": ["digital signature", "ocsp signing","keyEncipherment"],
                     "expiry": "26280h"
                 }
             ,
@@ -79,8 +84,9 @@ generate2ndCAConfJson() {
                     "crl sign",
                     "server auth"
                 ],
-                "ocsp_url": "http://0.0.0.0:$((${CAI1_PORT} + 1))",
-                "crl_url": "http://0.0.0.0:${CAI1_PORT}/crl",
+                "issuers_url": "http://${XPSD_HOST}:${XPSD_CAI1_PORT}/info",
+                "ocsp_url": "http://${XPSD_HOST}:$(($XPSD_CAI1_PORT + 1))",
+                "crl_url": "http://${XPSD_HOST}:${XPSD_CAI1_PORT}/crl",
                 "expiry": "8760h",
                 "ca_constraint": {
                     "is_ca": true,
@@ -93,8 +99,9 @@ generate2ndCAConfJson() {
                     "cert sign",
                     "crl sign"
                 ],
-                "ocsp_url": "http://0.0.0.0:$((${CAI2_PORT} + 1))",
-                "crl_url": "http://0.0.0.0:${CAI2_PORT}/crl",
+                "issuers_url": "http://${XPSD_HOST}:${XPSD_CAI2_PORT}/info",
+                "ocsp_url": "http://${XPSD_HOST}:$(($XPSD_CAI2_PORT + 1))",
+                "crl_url": "http://${XPSD_HOST}:${XPSD_CAI2_PORT}/crl",
                 "expiry": "8760h",
                 "ca_constraint": {
                     "is_ca": true,
@@ -104,6 +111,67 @@ generate2ndCAConfJson() {
             }
         }
     }
+}
+EOF
+
+  cat <<EOF >/DATA/intermediate/ca1-config.json
+{
+  "signing": {
+    "default": {
+      "expiry": "43800h",
+      "usages": [
+        "signing",
+        "key encipherment",
+        "client auth"
+      ]
+    },
+    "profiles": {
+      "server": {
+        "usages": [
+          "signing",
+          "key encipherment",
+          "server auth"
+        ],
+        "issuers_url": "http://${XPSD_HOST}:${XPSD_CAI1_PORT}/info",
+        "ocsp_url": "http://${XPSD_HOST}:$(($XPSD_CAI1_PORT + 1))",
+        "crl_url": "http://${XPSD_HOST}:${XPSD_CAI1_PORT}/crl",
+        "expiry": "8760h",
+        "ca_constraint": {
+          "is_ca": false
+        }
+      }
+    }
+  }
+}
+EOF
+  cat <<EOF >/DATA/intermediate/ca2-config.json
+{
+  "signing": {
+    "default": {
+      "expiry": "43800h",
+      "usages": [
+        "signing",
+        "key encipherment",
+        "client auth"
+      ]
+    },
+    "profiles": {
+      "server": {
+        "usages": [
+          "signing",
+          "key encipherment",
+          "server auth"
+        ],
+        "issuers_url": "http://${XPSD_HOST}:${XPSD_CAI2_PORT}/info",
+        "ocsp_url": "http://${XPSD_HOST}:$(($XPSD_CAI2_PORT + 1))",
+        "crl_url": "http://${XPSD_HOST}:${XPSD_CAI2_PORT}/crl",
+        "expiry": "8760h",
+        "ca_constraint": {
+          "is_ca": false
+        }
+      }
+    }
+  }
 }
 EOF
 }
@@ -167,8 +235,8 @@ EOF
   # crfeate directories, generate certificate, private key and sign it.
   [[ ! -d "/DATA/intermediate/${CA_Name}" ]] && mkdir -p /DATA/intermediate/${CA_Name}
   cd "/DATA/intermediate/${CA_Name}"
-  # generate CA certificate
-  info generate CA certificate ${CA_Name}
+  # generate ROOT CA certificate
+  info generate ROOT CA certificate ${CA_Name}
   cfssl gencert -initca=true "/DATA/intermediate/${CA_Name}/ca-${CA_Name}-${myprofile}-csr.json" | cfssljson -bare "ca-${CA_Name}-${myprofile}"
   # sign intermediate CA with root CA
   info sign intermediate CA ${CA_Name} with root CA
