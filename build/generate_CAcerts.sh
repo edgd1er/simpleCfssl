@@ -118,7 +118,10 @@ EOF
 {
   "signing": {
     "default": {
-      "expiry": "43800h",
+      "issuers_url": "http://${XPSD_HOST}:${XPSD_CAI2_PORT}/info",
+      "ocsp_url": "http://${XPSD_HOST}:$(($XPSD_CAI2_PORT + 1))",
+      "crl_url": "http://${XPSD_HOST}:${XPSD_CAI2_PORT}/crl",
+      "expiry": "8760h",
       "usages": [
         "signing",
         "key encipherment",
@@ -127,28 +130,45 @@ EOF
     },
     "profiles": {
       "server": {
+        "expiry": "43800h",
         "usages": [
           "signing",
           "key encipherment",
           "server auth"
-        ],
-        "issuers_url": "http://${XPSD_HOST}:${XPSD_CAI1_PORT}/info",
-        "ocsp_url": "http://${XPSD_HOST}:$(($XPSD_CAI1_PORT + 1))",
-        "crl_url": "http://${XPSD_HOST}:${XPSD_CAI1_PORT}/crl",
+        ]
+      },
+      "peer": {
         "expiry": "8760h",
-        "ca_constraint": {
-          "is_ca": false
-        }
+        "usages": [
+          "signing",
+          "digital signature",
+          "key encipherment",
+          "client auth",
+          "server auth"
+        ]
+      },
+      "client": {
+        "expiry": "8760h",
+        "usages": [
+          "signing",
+          "digital signature",
+          "key encipherment",
+          "client auth"
+        ]
       }
     }
   }
 }
 EOF
+
   cat <<EOF >/DATA/intermediate/ca2-config.json
 {
   "signing": {
     "default": {
-      "expiry": "43800h",
+      "issuers_url": "http://${XPSD_HOST}:${XPSD_CAI2_PORT}/info",
+      "ocsp_url": "http://${XPSD_HOST}:$(($XPSD_CAI2_PORT + 1))",
+      "crl_url": "http://${XPSD_HOST}:${XPSD_CAI2_PORT}/crl",
+      "expiry": "8760h",
       "usages": [
         "signing",
         "key encipherment",
@@ -157,18 +177,31 @@ EOF
     },
     "profiles": {
       "server": {
+        "expiry": "8760h",
         "usages": [
           "signing",
           "key encipherment",
           "server auth"
-        ],
-        "issuers_url": "http://${XPSD_HOST}:${XPSD_CAI2_PORT}/info",
-        "ocsp_url": "http://${XPSD_HOST}:$(($XPSD_CAI2_PORT + 1))",
-        "crl_url": "http://${XPSD_HOST}:${XPSD_CAI2_PORT}/crl",
+        ]
+      },
+      "peer": {
         "expiry": "8760h",
-        "ca_constraint": {
-          "is_ca": false
-        }
+        "usages": [
+          "signing",
+          "digital signature",
+          "key encipherment",
+          "client auth",
+          "server auth"
+        ]
+      },
+      "client": {
+        "expiry": "8760h",
+        "usages": [
+          "signing",
+          "digital signature",
+          "key encipherment",
+          "client auth"
+        ]
       }
     }
   }
