@@ -232,11 +232,11 @@ EOF
   ]
 }
 EOF
-  # crfeate directories, generate certificate, private key and sign it.
+  # create directories, generate certificate, private key and sign it.
   [[ ! -d "/DATA/intermediate/${CA_Name}" ]] && mkdir -p /DATA/intermediate/${CA_Name}
   cd "/DATA/intermediate/${CA_Name}"
-  # generate ROOT CA certificate
-  info generate ROOT CA certificate ${CA_Name}
+  # generate intermediate CA certificate
+  info generate intermediate CA certificate ${CA_Name}
   cfssl gencert -initca=true "/DATA/intermediate/${CA_Name}/ca-${CA_Name}-${myprofile}-csr.json" | cfssljson -bare "ca-${CA_Name}-${myprofile}"
   # sign intermediate CA with root CA
   info sign intermediate CA ${CA_Name} with root CA
@@ -273,7 +273,7 @@ for di in /DATA/ca /DATA/certs /DATA/intermediate/${CAI1_NAME} /DATA/intermediat
 done
 
 echo -e "\n"
-if [[ ! -f /DATA/ca-root-key.pem ]]; then
+if [[ ! -f /DATA/ca/ca-root-key.pem ]]; then
   info "** generation root CA certs **"
   generateCAcerts
   info write intermediate CA profiles in json
@@ -320,6 +320,9 @@ fi
 info start CA1 + ocsp responder
 supervisorctl start cfssl_ocspresponder_CAI1
 supervisorctl start cfssl_serve_CAI1
+supervisorctl start cfssl_ocsprefresh_CAI1
+
 info start CA2 + + ocsp responder
 supervisorctl start cfssl_ocspresponder_CAI2
 supervisorctl start cfssl_serve_CAI2
+supervisorctl start cfssl_ocsprefresh_CAI2

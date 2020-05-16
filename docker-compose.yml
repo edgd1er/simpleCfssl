@@ -22,7 +22,7 @@ services:
       - ./DATA:/DATA
     environment:
       TZ: Europe/Paris
-      FORCE_CREATION: "true"
+      FORCE_CREATION: "false"
       CA_CN_name: "CA_name"
       CA_KEY_ALGO: "rsa"
       CA_KEY_SIZE: 2048
