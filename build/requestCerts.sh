@@ -36,10 +36,7 @@ createCsr() {
   for item in $other; do
     items+=",\"$item\""
   done
-  echo -e "{\"CN\": \"$name\", \"hosts\": [ ${items:1} ],
-  \"ocsp_url\": \"${CAOCSP}\",
-  \"crl_url\": \"${CAURL}/crl\"
-  }"
+  echo -e "{\"CN\": \"$name\", \"hosts\": [ ${items:1} ]}"
 }
 
 usage() {
