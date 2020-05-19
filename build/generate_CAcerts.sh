@@ -57,6 +57,7 @@ generateCAcerts() {
 EOF
   cd /DATA/ca/
   cfssl gencert -initca=true /DATA/ca/ca-root-csr.json | cfssljson -bare ca-root
+  openssl x509 -outform der -in /DATA/ca/ca-root.pem -out /DATA/ca/ca-root.crt
 }
 
 # write intermediate CA profiles in json
@@ -349,6 +350,9 @@ if [ ! -f /DATA/requestCerts.sh ]; then
   cp /root/requestCerts.sh /DATA/requestCerts.sh
 fi
 
+if [ ! -f /DATA/CAS_chain.pem ]; then
+  cat /DATA/ca/ca-root.pem /DATA/intermediate/production/ca-production-2nd-full-key.pem /DATA/intermediate/development/ca-development-2nd-noserver.pem > /DATA/CAS_chain.pem
+fi
 #start servers
 info start CA1 + ocsp responder
 supervisorctl start cfssl_ocspresponder_CAI1
