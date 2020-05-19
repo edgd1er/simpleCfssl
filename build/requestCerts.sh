@@ -167,33 +167,3 @@ echo "check chain certificate : "
 openssl verify -CAfile ${CERTDIR}/../ca/ca-root.pem -untrusted ${CERTDIR}/../intermediate/production/ca-production-2nd-full.pem ${CERTDIR}/$name.$type.crt
 
 openssl ocsp -issuer ${CERTDIR}/../intermediate/production/ca-production-2nd-full.pem -no_nonce -cert ${CERTDIR}/$name.$type.crt -CAfile ${CERTDIR}/../ca/ca-root.pem -text -url ${CAOCSP}
-exit
-
-name=holdom2.mission.lan
-type=server
-CERTDIR=./certs
-#openssl x509 -in ${CERTDIR}/$name.$type.crt -noout -text
-
-
-./requestCerts.sh -dc production -n holdom2.mission.lan -t server -o pihole.mission.lan -o icinga.mission.lan -o jeedom.mission.lan -o cockpithol.mission.lan -o cadvisor.mission.lan -o portainer.mission.lan
-
-#How to test our OCSP responder ?
-openssl ocsp -issuer bundle.pem -no_nonce -cert my-client.pem -CAfile ca-server.pem -text -url http://localhost:8889
-openssl ocsp -issuer intermediate/production/ca-production-2nd-full.pem -no_nonce -cert certs/ -CAfile ca/ca-root.pem -text -url http://localhost:8889
-python -m json.tool
-
-+cfssl bundle [-ca-bundle bundle] [-int-bundle bundle] + cert [key] [intermediates]
-
-/api/v1/cfssl/bundle certificate domain private_key
-
-https://github.com/cloudflare/cfssl/blob/master/doc/api/endpoint_bundle.txt
-/api/v1/cfssl/bundle
-
-https://github.com/cloudflare/cfssl/blob/master/doc/api/endpoint_scaninfo.txt
-/api/v1/cfssl/scan_info
-
-https://github.com/cloudflare/cfssl/blob/master/doc/api/endpoint_crl.txt
-/api/v1/cfssl/crl
-
-https://github.com/cloudflare/cfssl/blob/master/doc/api/endpoint_revoke.txt
-/api/v1/cfssl/revoke
