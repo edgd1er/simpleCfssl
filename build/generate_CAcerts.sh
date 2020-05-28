@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 # cmd help: https://github.com/cloudflare/cfssl/blob/master/doc/cmd/cfssl.txt
 # api doc: https://github.com/cloudflare/cfssl/tree/master/doc/api
@@ -208,6 +208,20 @@ EOF
   }
 }
 EOF
+
+  cat <<EOF >/DATA/dbconf.yml
+${CAI1_NAME}:
+  driver: sqlite3
+  open: /DATA/intermediate/${CAI1_NAME}/certs-${CAI1_NAME}.db
+
+${CAI2_NAME}:
+  driver: sqlite3
+  open: /DATA/intermediate/${CAI2_NAME}/certs-${CAI2_NAME}.db
+EOF
+
+mkdir -p /DATA/migrations
+cp /root/01_createTables.sql /DATA/migrations/
+
 }
 
 #
@@ -289,7 +303,8 @@ generateDbConfig() {
   for CAI in ${CAI1_NAME} ${CAI2_NAME}; do
     echo "{\"driver\":\"sqlite3\",\"data_source\":\"/DATA/intermediate/${CAI}/certs-${CAI}.db\"}" >/DATA/intermediate/${CAI}/certdb-${CAI}.json
     if [[ ! -f /DATA/intermediate/${CAI}/certs-${CAI}.db ]]; then
-      cat /root/ocsp_schema.sql | sqlite3 /DATA/intermediate/${CAI}/certs-${CAI}.db
+      #cat /root/ocsp_schema.sql | sqlite3 /DATA/intermediate/${CAI}/certs-${CAI}.db
+      goose -env ${CAI} -path /DATA up
     fi
   done
 }
@@ -298,7 +313,7 @@ generateDbConfig() {
 #  main  #
 ##########
 
-[[ -n $TZ ]] && ln -sf /usr/share/zoneinfo/$TZ /etc/localetime && dpkg-reconfigure tzdata
+[[ -n $TZ ]] && ln -sf /usr/share/zoneinfo/$TZ /etc/localetime && echo "$TZ" > /etc/timezone #&& dpkg-reconfigure tzdata
 
 [[ "$FORCE_CREATION" == "true" ]] && find /DATA -type f -exec rm {} \;
 
@@ -351,7 +366,7 @@ if [ ! -f /DATA/requestCerts.sh ]; then
 fi
 
 if [ ! -f /DATA/CAS_chain.pem ]; then
-  cat /DATA/ca/ca-root.pem /DATA/intermediate/production/ca-production-2nd-full-key.pem /DATA/intermediate/development/ca-development-2nd-noserver.pem > /DATA/CAS_chain.pem
+  cat /DATA/ca/ca-root.pem /DATA/intermediate/production/ca-production-2nd-full-key.pem /DATA/intermediate/development/ca-development-2nd-noserver.pem >/DATA/CAS_chain.pem
 fi
 #start servers
 info start CA1 + ocsp responder

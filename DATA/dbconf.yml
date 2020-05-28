@@ -1,0 +1,7 @@
+production:
+  driver: sqlite3
+  open: /DATA/intermediate/production/certs-production.db
+
+development:
+  driver: sqlite3
+  open: /DATA/intermediate/development/certs-development.db

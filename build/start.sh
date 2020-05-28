@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 
-#set -x
+set -x
 ##
 # set zone info
 #
-if [[ $(cat /etc/timezone) != "$TZ" ]]; then
+if [[ ! -f /etc/timezone ]] || [[ $(cat /etc/timezone) != "$TZ" ]]; then
   ln -snf /usr/share/zoneinfo/$TZ /etc/localtime
-  dpkg-reconfigure -f noninteractive tzdata
 fi
 ##
 # Run a command or start supervisord
@@ -17,5 +16,6 @@ if [ $# -gt 0 ];then
     exec "$@"
 else
     # Otherwise start supervisord
-    /usr/bin/supervisord -c /etc/supervisor/supervisord.conf
+    #/usr/bin/supervisord -c /etc/supervisor/supervisord.conf
+    /usr/bin/supervisord --nodaemon --configuration /etc/supervisord.conf
 fi
